@@ -1,0 +1,39 @@
+name: Daily Auto Research
+
+on:
+  schedule:
+    # UTCで指定するため 21:30 UTC = 日本時間 翌6:30
+    - cron: "30 21 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write  # ログファイルをリポジトリに書き戻すために必要
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Pythonをセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: ライブラリをインストール
+        run: pip install -r requirements.txt
+
+      - name: 日次リサーチを送信
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python daily_research.py
+
+      - name: ログをリポジトリにコミット
+        run: |
+          git config user.name "auto-research-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "リサーチログ: $(date -u +'%Y-%m-%d')"
+          git push
